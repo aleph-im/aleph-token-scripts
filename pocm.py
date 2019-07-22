@@ -68,6 +68,13 @@ async def get_distribution_info(reward_address, start_date, db):
             output['address']: output['value']
             for output in tx['outputs']
         }
+        
+        async for contract_tx in db.transactions.find({
+            'blockHeight': tx['blockHeight'],
+            'type': 101
+        }, projection=['info.sender', 'info.result.refundFee']):
+            block_rewards[contract_tx['info']['sender']] -= contract_tx['info']['result']['refundFee']
+        
         total_rewards = sum(block_rewards.values()) 
         others = total_rewards - block_rewards[reward_address]
         original_total = (others / 0.01)
