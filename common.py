@@ -35,26 +35,27 @@ async def get_utxo(address):
             jres = await resp.json()
             return jres['outputs']
         
-async def prepare_transfer_tx(address, targets, utxo, remark=b""):
+async def prepare_transfer_tx(address, targets, utxo, remark=""):
     """ Targets are tuples: address and value.
     """
+    print(targets)
     outputs = [
-        {"address": hash_from_address[add],
+        {"address": hash_from_address(add),
          "value": val,
          "lockTime": 0} for add, val in targets
     ]
     change = sum([inp['value'] for inp in utxo]) - sum([o['value'] for o in outputs])
     outputs.append({
-        {"address": hash_from_address(address),
-           "value": change,
-           "lockTime": 0}
+        "address": hash_from_address(address),
+        "value": change,
+        "lockTime": 0
     })
     tx = await Transaction.from_dict({
-      "type": 10,
+      "type": 2,
       "time": int(time.time() * 1000),
       "blockHeight": None,
       "fee": 0,
-      "remark": remark,
+      "remark": remark.encode('utf-8'),
       "scriptSig": b"",
       "inputs": [{'fromHash': inp['hash'],
                   'fromIndex': inp['idx'],
@@ -163,6 +164,59 @@ async def distribution_packer(
     }]
     return utxo
 
+
+async def contract_call_packer(account_address, contract_address,
+                               method, params, private_key,
+                               utxo=None, remark='',
+                               gas_price=25,
+                               gas_limit=2000000):
+    # print("NULS Connector set up with address %s" % address)
+    if utxo is None:
+        utxo = await get_utxo(account_address)
+        
+    # we take the first 500, hoping it's enough... bad, bad, bad!
+    # TODO: do a real utxo management here
+    selected_utxo = utxo[:500]
+    i = 0
+    tx = await prepare_contract_call_tx(account_address, contract_address, method,
+                                        params, selected_utxo, remark=remark,
+                                        gas_limit=gas_limit, gas_price=gas_price)
+    await tx.sign_tx(private_key)
+    tx_hex = (await tx.serialize()).hex()
+    # tx_hash = await tx.get_hash()
+    # print("Broadcasting TX")
+    tx_hash = await broadcast(tx_hex)
+    utxo = [{
+        'hash': tx_hash,
+        'idx': 0,
+        'lockTime': 0,
+        'value': tx.coin_data.outputs[0].na
+    }]
+    return utxo
+
+async def transfer_packer(account_address, targets,
+                          private_key, utxo=None, remark=''):
+    # print("NULS Connector set up with address %s" % address)
+    if utxo is None:
+        utxo = await get_utxo(account_address)
+        
+    # we take the first 500, hoping it's enough... bad, bad, bad!
+    # TODO: do a real utxo management here
+    selected_utxo = utxo[:500]
+    i = 0
+    tx = await prepare_transfer_tx(account_address, targets, selected_utxo, remark=remark)
+    await tx.sign_tx(private_key)
+    tx_hex = (await tx.serialize()).hex()
+    # tx_hash = await tx.get_hash()
+    # print("Broadcasting TX")
+    tx_hash = await broadcast(tx_hex)
+    utxo = [{
+        'hash': tx_hash,
+        'idx': len(tx.coin_data.outputs)-1,
+        'lockTime': 0,
+        'value': tx.coin_data.outputs[-1].na
+    }]
+    return utxo
 
 async def get_sent_nuls(source_address, db, remark=None):
     matches = {

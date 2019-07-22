@@ -4,7 +4,7 @@ import yaml
 import asyncio
 from pprint import pprint
 from datetime import date, datetime
-from common import get_sent_nuls, get_sent_tokens
+from common import get_sent_nuls, get_sent_tokens, transfer_packer, contract_call_packer
 
 START_DATE = date(2019,7,18)
 
@@ -116,8 +116,30 @@ async def main():
     to_distribute = {
         addr: value - distributed.get(addr, 0)
         for addr, value in to_distribute.items()
+        if (value - distributed.get(addr, 0)) > 1000
     }
     pprint(to_distribute)
+    
+    # now let's do the refund.
+    nutxo = await transfer_packer(config['distribution_address'],
+                                  list(to_refund.items()),
+                                  config['distribution_pkey'], remark=config['refund_remark'])
+    
+    distribution_list = [
+        (address, value)
+        for address, value in to_distribute.items()
+        if value > (10**10)  # distribute more than 1 aleph only.
+    ]
+    # and the distribution.
+    maxitems = config.get('bulk_max_items')
+    for i in range(math.ceil(len(distribution_list) / MAX_ITEMS)):
+        nutxo = await contract_call_packer(address, config['contract_address'],
+                                           'bulkTransferFrom', 
+                                           [[config['source_address'],],
+                                            [i[0] for i in distribution_list[MAX_ITEMS*i:MAX_ITEMS*(i+1)]],
+                                            [i[1] for i in distribution_list[MAX_ITEMS*i:MAX_ITEMS*(i+1)]]],
+                                           pri_key, utxo=nutxo, remark=config['distribution_remark'])
+        print(i, len(addresses[MAX_ITEMS*i:MAX_ITEMS*(i+1)]))
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
