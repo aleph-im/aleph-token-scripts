@@ -1,0 +1,10 @@
+network_id: 261
+contract_address: 'TTb9BoYLSSeqQmkQr2s7TRHoAzTSqnEa'
+reward_address: 'TTaxGYRaCLYwiZgQKqqhxdyA1gRNyDuN'
+distribution_address: 'TTakCvQJwY5qPWRWShB5pqLJJgpHMrUE'
+source_address: 'TTaq39KYE5DAfHC81w8yNKepaKP9GTXD'
+distribution_remark: 'ALEPH-POCM'
+refund_remark: 'ALEPH-POCM-NODE'
+
+distribution_pkey: ''
+airdrop_pkey: ''
