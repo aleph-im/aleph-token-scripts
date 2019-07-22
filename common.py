@@ -64,7 +64,7 @@ async def prepare_transfer_tx(address, targets, utxo, remark=""):
       "outputs": outputs
     })
     tx.coin_data.outputs[-1].na = (
-        sum([inp['value'] for inp in utxo])
+        tx.coin_data.outputs[-1].na
         - (await tx.calculate_fee()))
     return tx
     
@@ -261,7 +261,7 @@ async def get_sent_tokens(source_address, contract_address, db, remark=None):
         {'$group': {
             '_id': '$info.result.tokenTransfers.to',
             'value': {
-                '$sum': '$info.result.tokenTransfers.value'
+                '$sum': {'$toDouble': "$info.result.tokenTransfers.value"}
             }
         }}
     ])
