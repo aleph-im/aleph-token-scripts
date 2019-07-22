@@ -152,8 +152,8 @@ async def main():
             nutxo = await contract_call_packer(config['distribution_address'], config['contract_address'],
                                             'bulkTransferFrom', 
                                             [[config['source_address'],],
-                                                [str(i[0]) for i in distribution_list[max_items*i:max_items*(i+1)]],
-                                                [str(i[1]) for i in distribution_list[max_items*i:max_items*(i+1)]]],
+                                                [i[0] for i in distribution_list[max_items*i:max_items*(i+1)]],
+                                                [str(int(i[1])) for i in distribution_list[max_items*i:max_items*(i+1)]]],
                                             pri_key, utxo=nutxo, remark=config['distribution_remark'])
             print("reward stage", i, len(distribution_list[max_items*i:max_items*(i+1)]), "items")
 
