@@ -84,11 +84,14 @@ async def get_distribution_info(reward_address, start_date, db):
         amounts_staked = {
             k: math.ceil((v / 0.01) / (twenty_total/2000000000000))
             for k, v in block_rewards.items()
-            if k != reward_address
+            if (k != reward_address) and v > 0
         }
-        amounts_staked[node['agent']] = amounts_staked.get(node['agent'], 0) + 2000000000000
-        to_refund[node['agent']] = to_refund.get(node['agent'], 0) + int(twenty_total)
         
+        amounts_staked[node['agent']] = amounts_staked.get(node['agent'], 0) + 2000000000000
+        
+        if twenty_total > 0:
+            to_refund[node['agent']] = to_refund.get(node['agent'], 0) + int(twenty_total)
+            
         for address, staked in amounts_staked.items():
             to_reward_shares[tx_date][address] = to_reward_shares[tx_date].get(address, 0) + staked
     
@@ -116,6 +119,7 @@ async def main():
     to_refund = {
         addr: value - refunded.get(addr, 0)
         for addr, value in to_refund.items()
+        if (value - refunded.get(addr, 0)) > 10000000
     }
     pprint(to_refund)
     distributed = await get_sent_tokens(config['source_address'], config['contract_address'], db, remark=config['distribution_remark'])
@@ -123,14 +127,18 @@ async def main():
     to_distribute = {
         addr: value - distributed.get(addr, 0)
         for addr, value in to_distribute.items()
-        if (value - distributed.get(addr, 0)) > 1000
     }
     pprint(to_distribute)
     
-    # now let's do the refund.
-    nutxo = await transfer_packer(config['distribution_address'],
-                                  list(to_refund.items()),
-                                  config['distribution_pkey'], remark=config['refund_remark'])
+    pri_key = bytes.fromhex(config['distribution_pkey'])
+    
+    nutxo = None
+    if len(to_refund):
+        # now let's do the refund.
+        nutxo = await transfer_packer(config['distribution_address'],
+                                      list(to_refund.items()),
+                                      pri_key, remark=config['refund_remark'])
+        print("refund issued for", to_refund)
     
     distribution_list = [
         (address, value)
@@ -138,15 +146,16 @@ async def main():
         if value > (10**10)  # distribute more than 1 aleph only.
     ]
     # and the distribution.
-    maxitems = config.get('bulk_max_items')
-    for i in range(math.ceil(len(distribution_list) / MAX_ITEMS)):
-        nutxo = await contract_call_packer(address, config['contract_address'],
-                                           'bulkTransferFrom', 
-                                           [[config['source_address'],],
-                                            [i[0] for i in distribution_list[MAX_ITEMS*i:MAX_ITEMS*(i+1)]],
-                                            [i[1] for i in distribution_list[MAX_ITEMS*i:MAX_ITEMS*(i+1)]]],
-                                           pri_key, utxo=nutxo, remark=config['distribution_remark'])
-        print(i, len(addresses[MAX_ITEMS*i:MAX_ITEMS*(i+1)]))
+    max_items = config.get('bulk_max_items')
+    if len(distribution_list):
+        for i in range(math.ceil(len(distribution_list) / max_items)):
+            nutxo = await contract_call_packer(config['distribution_address'], config['contract_address'],
+                                            'bulkTransferFrom', 
+                                            [[config['source_address'],],
+                                                [str(i[0]) for i in distribution_list[max_items*i:max_items*(i+1)]],
+                                                [str(i[1]) for i in distribution_list[max_items*i:max_items*(i+1)]]],
+                                            pri_key, utxo=nutxo, remark=config['distribution_remark'])
+            print("reward stage", i, len(distribution_list[max_items*i:max_items*(i+1)]), "items")
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
