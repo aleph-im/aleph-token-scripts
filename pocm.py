@@ -3,7 +3,7 @@ import math
 import yaml
 import asyncio
 from pprint import pprint
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from common import get_sent_nuls, get_sent_tokens, transfer_packer, contract_call_packer
 
 START_DATE = date(2019,7,18)
@@ -50,6 +50,8 @@ async def get_distribution_info(reward_address, start_date, db):
     total_received = 0
 
     last_consensus = None
+    
+    today = date.today()
 
     async for tx in txs:
         # block = await db.blocks.find_one({'height': tx['blockHeight']}, projection=['packingAddress'])
@@ -97,6 +99,11 @@ async def get_distribution_info(reward_address, start_date, db):
     
     for day, shares in to_reward_shares.items():
         day_amount = await get_period_value((day-start_date).days)
+        if day == today:
+            delta = datetime.now() - datetime.combine(day, datetime.min.time())
+            day_amount = (delta/timedelta(days=1)) * day_amount
+        print("day", day, day_amount)
+        
         total_shares = sum(shares.values())
         for address, ashares in shares.items():
             to_distribute[address] = to_distribute.get(address, 0) + int(day_amount * (ashares/total_shares))
