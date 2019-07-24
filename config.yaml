@@ -1,11 +1,12 @@
-network_id: 261
-contract_address: 'TTbE8y7mudKhuU3yoeLNR59mgkrspo7T'
-reward_address: 'TTaxGYRaCLYwiZgQKqqhxdyA1gRNyDuN'
-distribution_address: 'TTakCvQJwY5qPWRWShB5pqLJJgpHMrUE'
-source_address: 'TTaq39KYE5DAfHC81w8yNKepaKP9GTXD'
+network_id: 8964
+contract_address: 'NseL2yUZ8sJCPXTfL3MSGhdqLBhm7q3A'
+reward_address: 'Nsdxm3zMQRdJDxgmu3DaLEphC2k1wJQK'
+distribution_address: 'Nse1oQy8oHz3xqCCPACBtrUaCucF1xJ3'
+source_address: 'NsdtremzA1ppwcfTgaLhkKRUGuWWAMjz'
 distribution_remark: 'ALEPH-POCM'
 refund_remark: 'ALEPH-POCM-NODE'
 bulk_max_items: 120
 
 distribution_pkey: ''
 airdrop_pkey: ''
+source_pkey: ''

@@ -7,7 +7,7 @@ from nulsexplorer.protocol.data import (
     CHEAP_UNIT_FEE)
 from nulsexplorer.protocol.transaction import Transaction
 
-BASE_URL = 'https://testnet.nuls.world'
+BASE_URL = 'https://nuls.world'
 
 async def get_address(pubkey, chain_id):
     phash = public_key_to_hash(pubkey, chain_id=chain_id)

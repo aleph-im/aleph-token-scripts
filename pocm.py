@@ -6,7 +6,7 @@ from pprint import pprint
 from datetime import date, datetime, timedelta
 from common import get_sent_nuls, get_sent_tokens, transfer_packer, contract_call_packer
 
-START_DATE = date(2019,7,18)
+START_DATE = date(2019,7,23)
 
 async def get_period_value(t, periods=(365*10), variance=0.5, total=200000000*(10**10)):
     middle = float(periods)/2
@@ -116,7 +116,7 @@ async def main():
         config = yaml.safe_load(stream)
         
     client = motor.motor_asyncio.AsyncIOMotorClient('localhost', 27017)
-    db = client.nulstest
+    db = client.nulsmain
     
     to_refund, to_distribute = await get_distribution_info(config['reward_address'], START_DATE, db)
     pprint(to_refund)
