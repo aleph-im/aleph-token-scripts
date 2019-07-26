@@ -29,6 +29,7 @@ async def get_distribution_info(reward_address, start_date, db):
         }
         async for tx in register_txs
     }
+    pprint(nodes)
     
     blocks = {b['height']: b['packingAddress'] async for b in 
               db.blocks.find(
@@ -156,13 +157,15 @@ async def main():
     max_items = config.get('bulk_max_items')
     if len(distribution_list):
         for i in range(math.ceil(len(distribution_list) / max_items)):
+            step_items = distribution_list[max_items*i:max_items*(i+1)]
             nutxo = await contract_call_packer(config['distribution_address'], config['contract_address'],
                                             'bulkTransferFrom', 
                                             [[config['source_address'],],
-                                                [i[0] for i in distribution_list[max_items*i:max_items*(i+1)]],
-                                                [str(int(i[1])) for i in distribution_list[max_items*i:max_items*(i+1)]]],
-                                            pri_key, utxo=nutxo, remark=config['distribution_remark'])
-            print("reward stage", i, len(distribution_list[max_items*i:max_items*(i+1)]), "items")
+                                             [i[0] for i in step_items],
+                                             [str(int(i[1])) for i in step_items]],
+                                            pri_key, utxo=nutxo, remark=config['distribution_remark'],
+                                            gas_limit=len(step_items)*30000)
+            print("reward stage", i, len(step_items), "items")
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
