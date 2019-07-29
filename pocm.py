@@ -167,5 +167,6 @@ async def main():
                                             gas_limit=len(step_items)*30000)
             print("reward stage", i, len(step_items), "items")
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
