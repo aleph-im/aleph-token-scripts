@@ -5,8 +5,10 @@ import asyncio
 from pprint import pprint
 from datetime import date, datetime, timedelta
 from common import get_sent_nuls, get_sent_tokens, transfer_packer, contract_call_packer
+import pytz
 
 START_DATE = date(2019,7,23)
+CALC_TZ = pytz.FixedOffset(120)
 
 async def get_period_value(t, periods=(365*10), variance=0.5, total=200000000*(10**10)):
     middle = float(periods)/2
@@ -57,7 +59,8 @@ async def get_distribution_info(reward_address, start_date, db):
     async for tx in txs:
         # block = await db.blocks.find_one({'height': tx['blockHeight']}, projection=['packingAddress'])
         packing = blocks[tx['blockHeight']]
-        tx_date = datetime.fromtimestamp(tx['time']/1000).date()
+        tx_time = datetime.utcfromtimestamp(tx['time']/1000).replace(tzinfo=pytz.utc)
+        tx_date = tx_time.astimezone(CALC_TZ).date()
         
         if tx_date not in to_reward_shares:
             to_reward_shares[tx_date] = {}
@@ -101,7 +104,7 @@ async def get_distribution_info(reward_address, start_date, db):
     for day, shares in to_reward_shares.items():
         day_amount = await get_period_value((day-start_date).days)
         if day == today:
-            delta = datetime.now() - datetime.combine(day, datetime.min.time())
+            delta = (datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(CALC_TZ)) - datetime.combine(day, datetime.min.time()).replace(tzinfo=CALC_TZ)
             day_amount = (delta/timedelta(days=1)) * day_amount
         print("day", day, day_amount)
         
