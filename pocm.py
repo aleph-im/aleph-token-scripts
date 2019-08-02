@@ -119,7 +119,8 @@ async def main():
     with open("config.yaml", 'r') as stream:
         config = yaml.safe_load(stream)
         
-    client = motor.motor_asyncio.AsyncIOMotorClient('localhost', 27017)
+    client = motor.motor_asyncio.AsyncIOMotorClient(config.get('mongodb_host', 'localhost'),
+                                                    config.get('mongodb_port', 27017))
     db = client.nulsmain
     
     to_refund, to_distribute = await get_distribution_info(config['reward_address'], START_DATE, db)
