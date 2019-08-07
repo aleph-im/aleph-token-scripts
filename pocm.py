@@ -144,32 +144,32 @@ async def main():
     
     pri_key = bytes.fromhex(config['distribution_pkey'])
     
-    # nutxo = None
-    # if len(to_refund):
-    #     # now let's do the refund.
-    #     nutxo = await transfer_packer(config['distribution_address'],
-    #                                   list(to_refund.items()),
-    #                                   pri_key, remark=config['refund_remark'])
-    #     print("refund issued for", to_refund)
+    nutxo = None
+    if len(to_refund):
+        # now let's do the refund.
+        nutxo = await transfer_packer(config['distribution_address'],
+                                      list(to_refund.items()),
+                                      pri_key, remark=config['refund_remark'])
+        print("refund issued for", to_refund)
     
-    # distribution_list = [
-    #     (address, value)
-    #     for address, value in to_distribute.items()
-    #     if value > (10**10)  # distribute more than 1 aleph only.
-    # ]
-    # # and the distribution.
-    # max_items = config.get('bulk_max_items')
-    # if len(distribution_list):
-    #     for i in range(math.ceil(len(distribution_list) / max_items)):
-    #         step_items = distribution_list[max_items*i:max_items*(i+1)]
-    #         nutxo = await contract_call_packer(config['distribution_address'], config['contract_address'],
-    #                                         'bulkTransferFrom', 
-    #                                         [[config['source_address'],],
-    #                                          [i[0] for i in step_items],
-    #                                          [str(int(i[1])) for i in step_items]],
-    #                                         pri_key, utxo=nutxo, remark=config['distribution_remark'],
-    #                                         gas_limit=len(step_items)*30000)
-    #         print("reward stage", i, len(step_items), "items")
+    distribution_list = [
+        (address, value)
+        for address, value in to_distribute.items()
+        if value > (10**10)  # distribute more than 1 aleph only.
+    ]
+    # and the distribution.
+    max_items = config.get('bulk_max_items')
+    if len(distribution_list):
+        for i in range(math.ceil(len(distribution_list) / max_items)):
+            step_items = distribution_list[max_items*i:max_items*(i+1)]
+            nutxo = await contract_call_packer(config['distribution_address'], config['contract_address'],
+                                            'bulkTransferFrom', 
+                                            [[config['source_address'],],
+                                             [i[0] for i in step_items],
+                                             [str(int(i[1])) for i in step_items]],
+                                            pri_key, utxo=nutxo, remark=config['distribution_remark'],
+                                            gas_limit=len(step_items)*30000)
+            print("reward stage", i, len(step_items), "items")
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
