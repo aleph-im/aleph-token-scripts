@@ -130,7 +130,7 @@ async def prepare_contract_call_tx(address, contract_address,
     })
     tx.coin_data.outputs[0].na = (
         sum([inp['value'] for inp in utxo])
-        - (await tx.calculate_fee()) - (gas_price*gas_limit) - value)
+        - ((await tx.calculate_fee())*2) - (gas_price*gas_limit) - value)
     return tx
 
 async def distribution_packer(
