@@ -1,12 +1,16 @@
 network_id: 8964
-contract_address: 'NseL2yUZ8sJCPXTfL3MSGhdqLBhm7q3A'
-reward_address: 'Nsdxm3zMQRdJDxgmu3DaLEphC2k1wJQK'
-distribution_address: 'Nse1oQy8oHz3xqCCPACBtrUaCucF1xJ3'
-source_address: 'NsdtremzA1ppwcfTgaLhkKRUGuWWAMjz'
+contract_address: 'tNULSeBaMwVP6DSxnA8XqEfo3Ex4UjPy72e3VW'
+reward_address: 'tNULSeBaMtymkUpfxjk9Ytr3LPEFqNyGSFSem8'
+distribution_address: ''
+source_address: ''
 distribution_remark: 'ALEPH-POCM'
 refund_remark: 'ALEPH-POCM-NODE'
 distribution_pre_active_remark: 'ALEPH-POCM-ACTIVATION'
 bulk_max_items: 120
+
+mongodb_host: localhost
+mongodb_port: 27017
+mongodb_db: nuls2test
 
 distribution_pkey: ''
 airdrop_pkey: ''

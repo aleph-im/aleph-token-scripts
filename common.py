@@ -2,12 +2,12 @@
 import aiohttp
 import time
 
-from nulsexplorer.protocol.data import (
+from nuls2.model.data import (
     NulsSignature, public_key_to_hash, address_from_hash, hash_from_address,
     CHEAP_UNIT_FEE)
-from nulsexplorer.protocol.transaction import Transaction
+from nuls2.model.transaction import Transaction
 
-BASE_URL = 'https://nuls.world'
+# BASE_URL = 'https://nuls.world'
 
 async def get_address(pubkey, chain_id):
     phash = public_key_to_hash(pubkey, chain_id=chain_id)
@@ -244,9 +244,9 @@ async def get_sent_nuls(source_address, db, remark=None):
 
 async def get_sent_tokens(source_address, contract_address, db, remark=None):
     matches = {
-        'type': 101,
-        'info.contractAddress': contract_address,
-        'info.result.tokenTransfers.from': source_address
+        'type': 16,
+        'txData.contractAddress': contract_address,
+        'txData.resultInfo.tokenTransfers.fromAddress': source_address
     }
     
     if remark is not None:
@@ -254,14 +254,14 @@ async def get_sent_tokens(source_address, contract_address, db, remark=None):
         
     items = db.transactions.aggregate([
         {'$match': matches},
-        {'$unwind': '$info.result.tokenTransfers'},
+        {'$unwind': '$txData.resultInfo.tokenTransfers'},
         {'$match': {
-            'info.result.tokenTransfers.from': source_address
+            'txData.resultInfo.tokenTransfers.fromAddress': source_address
         }},
         {'$group': {
-            '_id': '$info.result.tokenTransfers.to',
+            '_id': '$txData.resultInfo.tokenTransfers.toAddress',
             'value': {
-                '$sum': {'$toDouble': "$info.result.tokenTransfers.value"}
+                '$sum': {'$toDouble': "$txData.resultInfo.tokenTransfers.value"}
             }
         }}
     ])
