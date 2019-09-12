@@ -17,7 +17,10 @@ async def get_period_value(t, periods=(365*5), variance=0.5, total=100000000*(10
     variance_ratio = (middle-t)/middle
     return mean+(mean*variance_ratio*variance)
 
-async def get_distribution_info(reward_address, start_date, db):
+async def get_distribution_info(reward_address, start_date, db,
+                                bonus_period=60, bonus_members=100,
+                                bonus_multiplier=1.15,
+                                node_commission=0.1):
     register_txs = db.transactions.find({
         'type': 4,
         'txData.commissionRate': 99,
@@ -52,6 +55,7 @@ async def get_distribution_info(reward_address, start_date, db):
     to_reward_shares = {}
     to_refund = {}
     to_distribute = {}
+    targets = []
     total_received = 0
 
     last_consensus = None
@@ -105,9 +109,22 @@ async def get_distribution_info(reward_address, start_date, db):
             to_refund[node['agent']] = to_refund.get(node['agent'], 0) + int(twenty_total)
             
         for address, staked in amounts_staked.items():
+            if address not in targets:
+                targets.append(address)
+                
+            if address == node['agent']:
+                staked = staked + ((total_staked-2000000000000) * node_commission)
+            else:
+                staked = staked * (1-node_commission)
+                
+            print(address, staked)
+                
             to_reward_shares[tx_date][address] = to_reward_shares[tx_date].get(address, 0) + staked
     
+    first_stakers = targets[:bonus_members]
+    i = 0
     for day, shares in to_reward_shares.items():
+        i += 1
         day_amount = await get_period_value((day-start_date).days)
         if day == today:
             delta = datetime.now(CALC_TZ) - datetime.combine(day, datetime.min.time()).replace(tzinfo=CALC_TZ)
@@ -116,7 +133,11 @@ async def get_distribution_info(reward_address, start_date, db):
         
         total_shares = sum(shares.values())
         for address, ashares in shares.items():
-            to_distribute[address] = to_distribute.get(address, 0) + int(day_amount * (ashares/total_shares))
+            addr_day_amount = int(day_amount * (ashares/total_shares))
+            if (i <= bonus_period) and (address in first_stakers):
+                addr_day_amount = addr_day_amount * bonus_multiplier
+                
+            to_distribute[address] = to_distribute.get(address, 0) + addr_day_amount
     
     return (to_refund, to_distribute)
 
