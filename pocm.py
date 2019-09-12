@@ -6,6 +6,7 @@ from pprint import pprint
 from datetime import date, datetime, timedelta
 from common import get_sent_nuls, get_sent_tokens, transfer_packer, contract_call_packer
 import pytz
+from nuls2.api.server import get_server
 
 START_DATE = date(2019,7,23)
 CALC_TZ = pytz.FixedOffset(120)
@@ -131,31 +132,35 @@ async def main():
     to_refund, to_distribute = await get_distribution_info(config['reward_address'], START_DATE, db)
     pprint(to_refund)
     pprint(to_distribute)
-    # refunded = await get_sent_nuls(config['distribution_address'], db, remark=config['refund_remark'])
-    # pprint(refunded)
-    # to_refund = {
-    #     addr: value - refunded.get(addr, 0)
-    #     for addr, value in to_refund.items()
-    #     if (value - refunded.get(addr, 0)) > 10000000
-    # }
-    # pprint(to_refund)
+    refunded = await get_sent_nuls(config['distribution_address'], db, remark=config['refund_remark'])
+    pprint(refunded)
+    to_refund = {
+        addr: value - refunded.get(addr, 0)
+        for addr, value in to_refund.items()
+        if (value - refunded.get(addr, 0)) > 10000000
+    }
+    pprint(to_refund)
     distributed = await get_sent_tokens(config['source_address'], config['contract_address'], db, remark=config['distribution_remark'])
     pprint(distributed)
     to_distribute = {
         addr: value - distributed.get(addr, 0)
         for addr, value in to_distribute.items()
     }
-    # pprint(to_distribute)
+    pprint(to_distribute)
     
-    # pri_key = bytes.fromhex(config['distribution_pkey'])
+    pri_key = bytes.fromhex(config['distribution_pkey'])
+    # address = await get_address(pub_key, config['chain_id'], config['prefix'])
+    server = get_server(config['api_server'])
     
     # nutxo = None
-    # if len(to_refund):
-    #     # now let's do the refund.
-    #     nutxo = await transfer_packer(config['distribution_address'],
-    #                                   list(to_refund.items()),
-    #                                   pri_key, remark=config['refund_remark'])
-    #     print("refund issued for", to_refund)
+    if len(to_refund):
+        # now let's do the refund.
+        await transfer_packer(server, config['distribution_address'],
+                              list(to_refund.items()),
+                              pri_key, remark=config['refund_remark'],
+                              chain_id=config['chain_id'],
+                              asset_id=config.get('asset_id', 1))
+        print("refund issued for", to_refund)
     
     distribution_list = [
         (address, value)
@@ -165,18 +170,21 @@ async def main():
     pprint(to_distribute.keys())
     print([str(v) for v in to_distribute.values()])
     # # and the distribution.
-    # max_items = config.get('bulk_max_items')
-    # if len(distribution_list):
-    #     for i in range(math.ceil(len(distribution_list) / max_items)):
-    #         step_items = distribution_list[max_items*i:max_items*(i+1)]
-    #         nutxo = await contract_call_packer(config['distribution_address'], config['contract_address'],
-    #                                         'bulkTransferFrom', 
-    #                                         [[config['source_address'],],
-    #                                          [i[0] for i in step_items],
-    #                                          [str(int(i[1])) for i in step_items]],
-    #                                         pri_key, utxo=nutxo, remark=config['distribution_remark'],
-    #                                         gas_limit=len(step_items)*30000)
-    #         print("reward stage", i, len(step_items), "items")
+    max_items = config.get('bulk_max_items')
+    if len(distribution_list):
+        for i in range(math.ceil(len(distribution_list) / max_items)):
+            step_items = distribution_list[max_items*i:max_items*(i+1)]
+            nutxo = await contract_call_packer(
+                server, config['distribution_address'], config['contract_address'],
+                'bulkTransferFrom',
+                [[config['source_address'],],
+                 [i[0] for i in step_items],
+                 [str(int(i[1])) for i in step_items]],
+                pri_key, remark=config['distribution_remark'],
+                chain_id=config['chain_id'],
+                asset_id=config.get('asset_id', 1),
+                gas_limit=len(step_items)*30000)
+            print("reward stage", i, len(step_items), "items")
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()

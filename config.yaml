@@ -1,8 +1,11 @@
-network_id: 8964
+chain_id: 2
+asset_id: 1
+prefix: 'tNULS'
+api_server: 'http://apitn1.nulscan.io/'
 contract_address: 'tNULSeBaMwVP6DSxnA8XqEfo3Ex4UjPy72e3VW'
 reward_address: 'tNULSeBaMtymkUpfxjk9Ytr3LPEFqNyGSFSem8'
-distribution_address: ''
-source_address: ''
+distribution_address: 'tNULSeBaMgv9jDZsVdR6Hzxtfm6TCXGGq9qHKv'
+source_address: 'tNULSeBaMmkNeSrQcxgs4cY8dedwX3XuQ1jtP7'
 distribution_remark: 'ALEPH-POCM'
 refund_remark: 'ALEPH-POCM-NODE'
 distribution_pre_active_remark: 'ALEPH-POCM-ACTIVATION'
