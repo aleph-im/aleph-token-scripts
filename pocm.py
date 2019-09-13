@@ -119,8 +119,6 @@ async def get_distribution_info(reward_address, start_date, db,
             else:
                 staked = staked * (1-node_commission)
                 
-            print(address, staked)
-                
             to_reward_shares[tx_date][address] = to_reward_shares[tx_date].get(address, 0) + staked
     
     first_stakers = targets[:bonus_members]
