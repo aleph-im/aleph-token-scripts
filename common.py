@@ -1,10 +1,11 @@
 
 import aiohttp
 import time
+import struct
 
 from nuls2.model.data import (
     NulsSignature, public_key_to_hash, address_from_hash, hash_from_address,
-    CHEAP_UNIT_FEE)
+    CHEAP_UNIT_FEE, b58_decode)
 from nuls2.model.transaction import Transaction
 
 # BASE_URL = 'https://nuls.world'
@@ -194,7 +195,6 @@ async def transfer_packer(server, account_address, targets,
     # tx_hash = await tx.get_hash()
     # print("Broadcasting TX")
     ret = await broadcast(server, tx_hex, chain_id=chain_id)
-    
     return ret['hash']
 
 async def get_sent_nuls(source_address, db, remark=None):
@@ -248,3 +248,10 @@ async def get_sent_tokens(source_address, contract_address, db, remark=None):
         it['_id']: it['value']
         async for it in items
     }
+    
+def nuls1to2(address, chain_id, prefix):
+    addrhash = b58_decode(address)[2:-1]
+    addr_type = addrhash[0]
+    addrhash = bytes(struct.pack("h", chain_id)) + \
+               addrhash
+    return address_from_hash(addrhash, prefix=prefix)
