@@ -1,12 +1,20 @@
-network_id: 8964
-contract_address: 'NseL2yUZ8sJCPXTfL3MSGhdqLBhm7q3A'
-reward_address: 'Nsdxm3zMQRdJDxgmu3DaLEphC2k1wJQK'
-distribution_address: 'Nse1oQy8oHz3xqCCPACBtrUaCucF1xJ3'
-source_address: 'NsdtremzA1ppwcfTgaLhkKRUGuWWAMjz'
+chain_id: 2
+asset_id: 1
+prefix: 'tNULS'
+api_server: 'http://apitn1.nulscan.io/'
+contract_address: 'tNULSeBaMwVP6DSxnA8XqEfo3Ex4UjPy72e3VW'
+reward_address: 'tNULSeBaMtymkUpfxjk9Ytr3LPEFqNyGSFSem8'
+distribution_address: 'tNULSeBaMgv9jDZsVdR6Hzxtfm6TCXGGq9qHKv'
+source_address: 'tNULSeBaMmkNeSrQcxgs4cY8dedwX3XuQ1jtP7'
 distribution_remark: 'ALEPH-POCM'
 refund_remark: 'ALEPH-POCM-NODE'
 distribution_pre_active_remark: 'ALEPH-POCM-ACTIVATION'
+balances_remark: 'ALEPH-NULS1-BALANCES'
 bulk_max_items: 120
+
+mongodb_host: localhost
+mongodb_port: 27017
+mongodb_db: nuls2test
 
 distribution_pkey: ''
 airdrop_pkey: ''
