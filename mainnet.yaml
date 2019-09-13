@@ -1,0 +1,21 @@
+chain_id: 1
+asset_id: 1
+prefix: 'NULS'
+api_server: 'https://nulscan.io/api/'
+contract_address: 'NULSd6Hh1FjbnAktH1FFvFnTzfgFnZtgAhYut'
+reward_address: 'NULSd6HgYWUv7RQhdQ8wQmaXby4cCV7wZSvTT'
+distribution_address: 'NULSd6HgbYqttpH4P91SqFhWDXgG5VzonXaNR'
+source_address: 'NULSd6HgUc5hkAzuA7nv6Z7ejP9CyZzi3fyo8'
+distribution_remark: 'ALEPH-POCM'
+refund_remark: 'ALEPH-POCM-NODE'
+distribution_pre_active_remark: 'ALEPH-POCM-ACTIVATION'
+balances_remark: 'ALEPH-NULS1-BALANCES'
+bulk_max_items: 250
+
+mongodb_host: localhost
+mongodb_port: 27017
+mongodb_db: nuls2main
+
+distribution_pkey: ''
+airdrop_pkey: ''
+source_pkey: ''
