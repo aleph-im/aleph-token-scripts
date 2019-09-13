@@ -2,11 +2,13 @@ import motor.motor_asyncio
 import math
 import yaml
 import asyncio
+import click
 from pprint import pprint
 from datetime import date, datetime, timedelta
-from common import get_sent_nuls, get_sent_tokens, transfer_packer, contract_call_packer
+from common import get_sent_nuls, get_sent_tokens, transfer_packer, contract_call_packer, get_address
 import pytz
 from nuls2.api.server import get_server
+from secp256k1 import PrivateKey
 
 START_DATE = date(2019,7,23)
 CALC_TZ = pytz.FixedOffset(120)
@@ -142,8 +144,8 @@ async def get_distribution_info(reward_address, start_date, db,
     return (to_refund, to_distribute)
 
     
-async def main():
-    with open("config.yaml", 'r') as stream:
+async def rmain(config_file):
+    with open(config_file, 'r') as stream:
         config = yaml.safe_load(stream)
         
     client = motor.motor_asyncio.AsyncIOMotorClient(config.get('mongodb_host', 'localhost'),
@@ -171,16 +173,24 @@ async def main():
     
     pri_key = bytes.fromhex(config['distribution_pkey'])
     # address = await get_address(pub_key, config['chain_id'], config['prefix'])
+    # pri_key = bytes.fromhex(config['source_pkey'])
+    privkey = PrivateKey(pri_key, raw=True)
+    pub_key = privkey.pubkey.serialize()
+    address = await get_address(pub_key, config['chain_id'], config['prefix'])
     server = get_server(config['api_server'])
     
+    nonce = None
     # nutxo = None
     if len(to_refund):
         # now let's do the refund.
-        await transfer_packer(server, config['distribution_address'],
-                              list(to_refund.items()),
-                              pri_key, remark=config['refund_remark'],
-                              chain_id=config['chain_id'],
-                              asset_id=config.get('asset_id', 1))
+        for refund in to_refund.items():
+            nash = await transfer_packer(server, config['distribution_address'],
+                                  [refund], pri_key, nonce=nonce,
+                                  remark=config['refund_remark'],
+                                  chain_id=config['chain_id'],
+                                  asset_id=config.get('asset_id', 1))
+            nonce = nash[-16:]
+            await asyncio.sleep(10)
         print("refund issued for", to_refund)
     
     distribution_list = [
@@ -188,6 +198,7 @@ async def main():
         for address, value in to_distribute.items()
         if value > (10**10)  # distribute more than 1 aleph only.
     ]
+    # return
     pprint(to_distribute.keys())
     print([str(v) for v in to_distribute.values()])
     # # and the distribution.
@@ -195,18 +206,25 @@ async def main():
     if len(distribution_list):
         for i in range(math.ceil(len(distribution_list) / max_items)):
             step_items = distribution_list[max_items*i:max_items*(i+1)]
-            nutxo = await contract_call_packer(
+            nash = await contract_call_packer(
                 server, config['distribution_address'], config['contract_address'],
                 'bulkTransferFrom',
                 [[config['source_address'],],
                  [i[0] for i in step_items],
                  [str(int(i[1])) for i in step_items]],
-                pri_key, remark=config['distribution_remark'],
+                pri_key, nonce=nonce, remark=config['distribution_remark'],
                 chain_id=config['chain_id'],
                 asset_id=config.get('asset_id', 1),
                 gas_limit=len(step_items)*30000)
+            nonce = nash[-16:]
+            await asyncio.sleep(10)
             print("reward stage", i, len(step_items), "items")
-
-if __name__ == "__main__":
+            
+@click.command()
+@click.option('--config', '-c', default='config.yaml', help='Config file')
+def main(config):
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    loop.run_until_complete(rmain(config))
+
+if __name__ == '__main__':
+    main()
