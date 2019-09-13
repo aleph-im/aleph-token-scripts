@@ -9,6 +9,7 @@ source_address: 'tNULSeBaMmkNeSrQcxgs4cY8dedwX3XuQ1jtP7'
 distribution_remark: 'ALEPH-POCM'
 refund_remark: 'ALEPH-POCM-NODE'
 distribution_pre_active_remark: 'ALEPH-POCM-ACTIVATION'
+balances_remark: 'ALEPH-NULS1-BALANCES'
 bulk_max_items: 120
 
 mongodb_host: localhost
