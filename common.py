@@ -30,7 +30,7 @@ async def prepare_transfer_tx(address, targets, nonce, chain_id=1,
     outputs = [
         {"address": add,
          "amount": val,
-         "lockTime": -1,
+         "lockTime": 0,
          "assetsChainId": chain_id,
          "assetsId": asset_id} for add, val in targets
     ]
