@@ -11,7 +11,7 @@ from nuls2.api.server import get_server
 START_DATE = date(2019,7,23)
 ACTIVATION_THRESHOLD = 200000*(10**8)
 CALCULATION_VALUE = 600000*(10**8) # amounts of staked nuls to take as a base for calculation of rewards
-DAY_AMOUNT = 80000*(10**10)*4
+DAY_AMOUNT = 80000*(10**10)
 
 async def get_distribution_info(reward_address, start_date, db):
     register_txs = db.transactions.find({
