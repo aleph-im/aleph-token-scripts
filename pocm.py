@@ -188,7 +188,7 @@ async def rmain(config_file):
                                   chain_id=config['chain_id'],
                                   asset_id=config.get('asset_id', 1))
             nonce = nash[-16:]
-            await asyncio.sleep(10)
+            await asyncio.sleep(2)
         print("refund issued for", to_refund)
     
     distribution_list = [
