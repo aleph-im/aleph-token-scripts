@@ -3,6 +3,7 @@ import math
 import yaml
 import asyncio
 import click
+import copy
 from pprint import pprint
 from datetime import date, datetime, timedelta
 from common import get_sent_nuls, get_sent_tokens, transfer_packer, contract_call_packer
@@ -10,8 +11,8 @@ from nuls2.api.server import get_server
 
 START_DATE = date(2019,7,23)
 ACTIVATION_THRESHOLD = 200000*(10**8)
-CALCULATION_VALUE = 600000*(10**8) # amounts of staked nuls to take as a base for calculation of rewards
-DAY_AMOUNT = 80000*(10**10)
+CALCULATION_VALUE = 1000000*(10**8) # amounts of staked nuls to take as a base for calculation of rewards
+DAY_AMOUNT = 100000*(10**10)
 
 async def get_distribution_info(reward_address, start_date, db):
     register_txs = db.transactions.find({
@@ -31,6 +32,7 @@ async def get_distribution_info(reward_address, start_date, db):
             'agentHash': tx['hash'],
             'stakers': {},
             'activated': False,
+            'inactivation_height': -1,
             'activation_height': -1,
             'total_staked': 0
         }
@@ -40,6 +42,7 @@ async def get_distribution_info(reward_address, start_date, db):
     
     to_distribute = {}
     jointx_to_nodes = {}
+    activated_nodes = list()
     
     async for tx in db.transactions.find({
             'type': {'$in': [5,6]}
@@ -49,8 +52,8 @@ async def get_distribution_info(reward_address, start_date, db):
                 continue
             
             node = nodes[tx['txData']['agentHash']]
-            if node['activated']:
-                continue # ignore already activated nodes
+            # if node['activated']:
+            #     continue # ignore already activated nodes
             
             node['total_staked'] += tx['txData']['amount']
             node['stakers'][tx['hash'][-16:]] = {
@@ -65,10 +68,13 @@ async def get_distribution_info(reward_address, start_date, db):
                 tx['txData']['amount'] / (10**8),
                 node['total_staked'] / (10**8)))
             
-            if node['total_staked'] >= ACTIVATION_THRESHOLD:
+            if (node['total_staked'] >= ACTIVATION_THRESHOLD
+                and not node['activated']):
                 print('Node %s activated!' % node['agentId'])
                 node['activated'] = True
                 node['activation_height'] = tx['height'] + 100 # approx 100 nodes per round
+                activated_nodes.append(copy.deepcopy(node))
+                
                 
         if tx['type'] == 6:
             nonce = tx['coinFroms'][0]['nonce']
@@ -80,8 +86,8 @@ async def get_distribution_info(reward_address, start_date, db):
             node_hash = jointx_to_nodes[nonce]
             node = nodes[node_hash]
             
-            if node['activated']:
-                continue # ignore already activated nodes
+            # if node['activated']:
+            #     continue # ignore already activated nodes
             
             node['total_staked'] -= amount
             del node['stakers'][nonce]
@@ -91,14 +97,21 @@ async def get_distribution_info(reward_address, start_date, db):
                 address,
                 amount / (10**8),
                 node['total_staked'] / (10**8)))
+                
+            if (node['total_staked'] < ACTIVATION_THRESHOLD
+                and node['activated']):
+                node['activated'] = False
+                node['inactivation_height'] = tx['height']
             
-    for node in nodes.values():
+    # for node in nodes.values():
+    for node in activated_nodes:
         for staker_info in node['stakers'].values():
-            minutes_waiting = (node['activation_height'] - staker_info['height']) / 6 # minutes
+            from_height = max(node['inactivation_height'], staker_info['height'])
+            minutes_waiting = (node['activation_height'] - from_height) / 6 # minutes
             day_ratio = minutes_waiting / 1440
             distribution_ratio = staker_info['value'] / CALCULATION_VALUE
-            print("%s: %f of daily for %f days: %f aleph" % (
-                staker_info['address'], distribution_ratio, day_ratio, (DAY_AMOUNT*day_ratio*distribution_ratio)/(10**10)
+            print("[%s] %s: %f of daily for %f days: %f aleph" % (
+                node['agentId'], staker_info['address'], distribution_ratio, day_ratio, (DAY_AMOUNT*day_ratio*distribution_ratio)/(10**10)
             ))
             to_distribute[staker_info['address']] = \
                 to_distribute.get(staker_info['address'], 0) + (DAY_AMOUNT*day_ratio*distribution_ratio)
@@ -139,7 +152,7 @@ async def rmain(config_file):
     server = get_server(config['api_server'])
     
     pprint(distribution_list)
-    return
+    # return
     # and the distribution.
     nonce = None
     max_items = config.get('bulk_max_items')
