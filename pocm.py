@@ -21,8 +21,11 @@ async def get_period_value(t, periods=(365*5), variance=0.5, total=100000000*(10
 
 async def get_distribution_info(reward_address, start_date, db,
                                 bonus_period=60, bonus_members=100,
-                                bonus_multiplier=1.15,
-                                node_commission=0.1):
+                                bonus_multiplier=1.15, bonus_rounds=2,
+                                node_commission=0.1, replacements=None):
+    if replacements is None:
+        replacements = dict()
+
     register_txs = db.transactions.find({
         'type': 4,
         'txData.commissionRate': 99,
@@ -108,7 +111,8 @@ async def get_distribution_info(reward_address, start_date, db,
         amounts_staked[node['agent']] = amounts_staked.get(node['agent'], 0) + 2000000000000
         
         if twenty_total > 0:
-            to_refund[node['agent']] = to_refund.get(node['agent'], 0) + int(twenty_total)
+            agent_address = replacements.get(node['agent'], node['agent'])
+            to_refund[agent_address] = to_refund.get(agent_address, 0) + int(twenty_total)
             
         for address, staked in amounts_staked.items():
             if address not in targets:
@@ -121,10 +125,14 @@ async def get_distribution_info(reward_address, start_date, db,
                 
             to_reward_shares[tx_date][address] = to_reward_shares[tx_date].get(address, 0) + staked
     
-    first_stakers = targets[:bonus_members]
+    first_stakers = list()
     i = 0
+    lday = 0
     for day, shares in to_reward_shares.items():
         i += 1
+        if not i % bonus_period:
+            first_stakers.clear()
+
         day_amount = await get_period_value((day-start_date).days)
         if day == today:
             delta = datetime.now(CALC_TZ) - datetime.combine(day, datetime.min.time()).replace(tzinfo=CALC_TZ)
@@ -133,11 +141,18 @@ async def get_distribution_info(reward_address, start_date, db,
         
         total_shares = sum(shares.values())
         for address, ashares in shares.items():
+            if address not in first_stakers and len(first_stakers) < bonus_members:
+                first_stakers.append(address)
+
             addr_day_amount = int(day_amount * (ashares/total_shares))
-            if (i <= bonus_period) and (address in first_stakers):
+            if address in first_stakers and i < (bonus_period*bonus_rounds):
                 addr_day_amount = addr_day_amount * bonus_multiplier
-                
-            to_distribute[address] = to_distribute.get(address, 0) + addr_day_amount
+            daddress = replacements.get(address, address)
+
+            to_distribute[daddress] = to_distribute.get(daddress, 0) + addr_day_amount     
+        total_distributed = sum(to_distribute.values())   
+        print("day total", day, total_distributed-lday)
+        lday = total_distributed
     
     return (to_refund, to_distribute)
 
@@ -149,12 +164,22 @@ async def rmain(config_file):
     client = motor.motor_asyncio.AsyncIOMotorClient(config.get('mongodb_host', 'localhost'),
                                                     config.get('mongodb_port', 27017))
     db = client[config.get('mongodb_db', 'nuls2main')]
+
+    replacements = config.get('replacements', dict())
     
-    to_refund, to_distribute = await get_distribution_info(config['reward_address'], START_DATE, db)
+    to_refund, to_distribute = await get_distribution_info(config['reward_address'],
+                                                           START_DATE, db, replacements=replacements)
     pprint(to_refund)
     pprint(to_distribute)
     refunded = await get_sent_nuls(config['distribution_address'], db, remark=config['refund_remark'])
     pprint(refunded)
+    
+    # we add the old address refunds to the new one balance
+    for addr, replaces in replacements.items():
+        if addr in refunded.keys():
+            refunded[replaces] = refunded.get(replaces, 0) + refunded[addr]
+    pprint(refunded)
+
     to_refund = {
         addr: value - refunded.get(addr, 0)
         for addr, value in to_refund.items()
@@ -163,6 +188,12 @@ async def rmain(config_file):
     pprint(to_refund)
     distributed = await get_sent_tokens(config['source_address'], config['contract_address'], db, remark=config['distribution_remark'])
     pprint(distributed)
+    
+    # we add the old address distributions to the new one balance
+    for addr, replaces in replacements.items():
+        if addr in distributed.keys():
+            distributed[replaces] = distributed.get(replaces, 0) + distributed[addr]
+
     to_distribute = {
         addr: value - distributed.get(addr, 0)
         for addr, value in to_distribute.items()
@@ -181,14 +212,16 @@ async def rmain(config_file):
     # nutxo = None
     if len(to_refund):
         # now let's do the refund.
-        for refund in to_refund.items():
-            nash = await transfer_packer(server, config['distribution_address'],
-                                  [refund], pri_key, nonce=nonce,
-                                  remark=config['refund_remark'],
-                                  chain_id=config['chain_id'],
-                                  asset_id=config.get('asset_id', 1))
-            nonce = nash[-16:]
-            await asyncio.sleep(2)
+        # for refund in to_refund.items():
+
+        nash = await transfer_packer(server, config['distribution_address'],
+                                list(to_refund.items()), pri_key, nonce=nonce,
+                                remark=config['refund_remark'],
+                                chain_id=config['chain_id'],
+                                asset_id=config.get('asset_id', 1))
+        nonce = nash[-16:]
+        await asyncio.sleep(10)
+
         print("refund issued for", to_refund)
     
     distribution_list = [
@@ -198,6 +231,7 @@ async def rmain(config_file):
     ]
     # return
     pprint(to_distribute.keys())
+    return
     print([str(v) for v in to_distribute.values()])
     # # and the distribution.
     max_items = config.get('bulk_max_items')

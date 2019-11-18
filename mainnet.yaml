@@ -19,3 +19,6 @@ mongodb_db: nuls2main
 distribution_pkey: ''
 airdrop_pkey: ''
 source_pkey: ''
+
+replacements:
+  "NULSd6HggMHPXyL7VnjKTGdq7yhMUnC9o8kM1": NULSd6HgZeFNjYg9Zu8igxS9KpL1NzKEPNw4B
