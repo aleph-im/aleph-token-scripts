@@ -231,7 +231,7 @@ async def rmain(config_file):
     ]
     # return
     pprint(to_distribute.keys())
-    return
+    # return
     print([str(v) for v in to_distribute.values()])
     # # and the distribution.
     max_items = config.get('bulk_max_items')
