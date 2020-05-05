@@ -117,6 +117,10 @@ async def get_distribution_info(reward_address, start_date, db,
             to_refund[agent_address] = to_refund.get(agent_address, 0) + int(twenty_total)
             
         for address, staked in amounts_staked.items():
+            if tx_date >= CUTOFF_DATE and address in fixed_rewards.keys():
+                # ignore fixed amount addresses
+                continue
+
             if address not in targets:
                 targets.append(address)
                 
