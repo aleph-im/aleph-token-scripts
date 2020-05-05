@@ -9,8 +9,10 @@ from common import get_sent_nuls, get_sent_tokens, transfer_packer, contract_cal
 import pytz
 from nuls2.api.server import get_server
 from secp256k1 import PrivateKey
+from collections import Counter
 
 START_DATE = date(2019,7,23)
+CUTOFF_DATE = date(2020,4,23)
 CALC_TZ = pytz.FixedOffset(120)
 
 async def get_period_value(t, periods=(365*5), variance=0.5, total=100000000*(10**10)):
@@ -22,7 +24,7 @@ async def get_period_value(t, periods=(365*5), variance=0.5, total=100000000*(10
 async def get_distribution_info(reward_address, start_date, db,
                                 bonus_period=60, bonus_members=100,
                                 bonus_multiplier=1.15, bonus_rounds=2,
-                                node_commission=0.1, replacements=None):
+                                node_commission=0.1, replacements=None, fixed_rewards=None):
     if replacements is None:
         replacements = dict()
 
@@ -134,9 +136,18 @@ async def get_distribution_info(reward_address, start_date, db,
             first_stakers.clear()
 
         day_amount = await get_period_value((day-start_date).days)
+
+        if day >= CUTOFF_DATE and fixed_rewards is not None:
+            day_amount -= sum([amount * (10**10) for amount in fixed_rewards.values()])
+
         if day == today:
             delta = datetime.now(CALC_TZ) - datetime.combine(day, datetime.min.time()).replace(tzinfo=CALC_TZ)
             day_amount = (delta/timedelta(days=1)) * day_amount
+        else:
+            if day >= CUTOFF_DATE and fixed_rewards is not None:
+                for address, amount in fixed_rewards.items():
+                    to_distribute[address] = to_distribute.get(address, 0) + (amount*(10**10))
+
         print("day", day, day_amount)
         
         total_shares = sum(shares.values())
@@ -150,7 +161,7 @@ async def get_distribution_info(reward_address, start_date, db,
             daddress = replacements.get(address, address)
 
             to_distribute[daddress] = to_distribute.get(daddress, 0) + addr_day_amount     
-        total_distributed = sum(to_distribute.values())   
+        total_distributed = sum(to_distribute.values())
         print("day total", day, total_distributed-lday)
         lday = total_distributed
     
@@ -166,9 +177,12 @@ async def rmain(config_file):
     db = client[config.get('mongodb_db', 'nuls2main')]
 
     replacements = config.get('replacements', dict())
+
+    fixed_rewards = config.get('fixed_rewards', dict())
     
     to_refund, to_distribute = await get_distribution_info(config['reward_address'],
-                                                           START_DATE, db, replacements=replacements)
+                                                           START_DATE, db, replacements=replacements,
+                                                           fixed_rewards=fixed_rewards)
     pprint(to_refund)
     pprint(to_distribute)
     refunded = await get_sent_nuls(config['distribution_address'], db, remark=config['refund_remark'])
@@ -186,16 +200,23 @@ async def rmain(config_file):
         if (value - refunded.get(addr, 0)) > 10000000
     }
     pprint(to_refund)
+    distributed_old_token = await get_sent_tokens(config['old_source_address'], config['old_contract_address'], db, remark=config['distribution_remark'])
+    print("on old")
+    pprint(distributed_old_token)
     distributed = await get_sent_tokens(config['source_address'], config['contract_address'], db, remark=config['distribution_remark'])
+    print("on new")
     pprint(distributed)
+    total_distributed = Counter(distributed_old_token) + Counter(distributed)
+    print("total")
+    pprint(total_distributed)
     
     # we add the old address distributions to the new one balance
     for addr, replaces in replacements.items():
         if addr in distributed.keys():
-            distributed[replaces] = distributed.get(replaces, 0) + distributed[addr]
+            total_distributed[replaces] = total_distributed.get(replaces, 0) + total_distributed[addr]
 
     to_distribute = {
-        addr: value - distributed.get(addr, 0)
+        addr: value - total_distributed.get(addr, 0)
         for addr, value in to_distribute.items()
     }
     pprint(to_distribute)
@@ -240,7 +261,7 @@ async def rmain(config_file):
             step_items = distribution_list[max_items*i:max_items*(i+1)]
             nash = await contract_call_packer(
                 server, config['distribution_address'], config['contract_address'],
-                'bulkTransferFrom',
+                'batchTransferFrom',
                 [[config['source_address'],],
                  [i[0] for i in step_items],
                  [str(int(i[1])) for i in step_items]],
