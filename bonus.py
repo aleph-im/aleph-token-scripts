@@ -14,6 +14,13 @@ ACTIVATION_THRESHOLD = 200000*(10**8)
 CALCULATION_VALUE = 1000000*(10**8) # amounts of staked nuls to take as a base for calculation of rewards
 DAY_AMOUNT = 100000*(10**10)
 
+async def get_last_block_height(db):
+    query = db.blocks.find(projection={'height': 1}).sort([('height', -1)]).limit(1)
+    if await query.fetch_next:
+        return query.next_object()['height']
+    else:
+        return None
+
 async def get_distribution_info(reward_address, start_date, db):
     register_txs = db.transactions.find({
         'type': 4,
@@ -43,6 +50,8 @@ async def get_distribution_info(reward_address, start_date, db):
     to_distribute = {}
     jointx_to_nodes = {}
     activated_nodes = list()
+
+    total_staked = 0
     
     async for tx in db.transactions.find({
             'type': {'$in': [5,6]}
@@ -70,7 +79,8 @@ async def get_distribution_info(reward_address, start_date, db):
             
             if (node['total_staked'] >= ACTIVATION_THRESHOLD
                 and not node['activated']):
-                print('Node %s activated!' % node['agentId'])
+                node['total_at_activation'] = sum([n['total_staked'] for n in nodes.values()])
+                print('Node %s activated! (total staked %s out of %s)' % (node['agentId'], node['total_staked'] / (10**8), node['total_at_activation'] / (10**8)))
                 node['activated'] = True
                 node['activation_height'] = tx['height'] + 100 # approx 100 nodes per round
                 activated_nodes.append(copy.deepcopy(node))
@@ -104,17 +114,39 @@ async def get_distribution_info(reward_address, start_date, db):
                 node['inactivation_height'] = tx['height']
             
     # for node in nodes.values():
+    handled_nodes = list()
     for node in activated_nodes:
+        handled_nodes.append(node['hash'])
         for staker_info in node['stakers'].values():
             from_height = max(node['inactivation_height'], staker_info['height'])
             minutes_waiting = (node['activation_height'] - from_height) / 6 # minutes
             day_ratio = minutes_waiting / 1440
-            distribution_ratio = staker_info['value'] / CALCULATION_VALUE
+            distribution_ratio = staker_info['value'] / node['total_at_activation']
             print("[%s] %s: %f of daily for %f days: %f aleph" % (
                 node['agentId'], staker_info['address'], distribution_ratio, day_ratio, (DAY_AMOUNT*day_ratio*distribution_ratio)/(10**10)
             ))
             to_distribute[staker_info['address']] = \
                 to_distribute.get(staker_info['address'], 0) + (DAY_AMOUNT*day_ratio*distribution_ratio)
+
+    last_block = await get_last_block_height(db)
+    total_staked = sum([n['total_staked'] for n in nodes.values()])
+    print(f"Last block is {last_block}")
+    # now handle nodes that aren't active yet
+    for node in nodes.values():
+        if node['activated']:
+            continue
+
+        for staker_info in node['stakers'].values():
+            from_height = max(node['inactivation_height'], staker_info['height'])
+            minutes_waiting = (last_block - from_height) / 6 # minutes
+            day_ratio = minutes_waiting / 1440
+            distribution_ratio = staker_info['value'] / total_staked
+            print("[%s] %s: %f of daily for %f days: %f aleph" % (
+                node['agentId'], staker_info['address'], distribution_ratio, day_ratio, (DAY_AMOUNT*day_ratio*distribution_ratio)/(10**10)
+            ))
+            to_distribute[staker_info['address']] = \
+                to_distribute.get(staker_info['address'], 0) + (DAY_AMOUNT*day_ratio*distribution_ratio)
+
     
     return to_distribute
                 
