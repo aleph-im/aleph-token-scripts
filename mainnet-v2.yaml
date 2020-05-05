@@ -1,0 +1,30 @@
+chain_id: 1
+asset_id: 1
+prefix: 'NULS'
+api_server: 'https://nulscan.io/api/'
+old_contract_address: 'NULSd6Hh1FjbnAktH1FFvFnTzfgFnZtgAhYut'
+contract_address: 'NULSd6HgyZkiqLnBzTaeSQfx1TNg2cqbzq51h'
+reward_address: 'NULSd6HgYWUv7RQhdQ8wQmaXby4cCV7wZSvTT'
+distribution_address: 'NULSd6HgbYqttpH4P91SqFhWDXgG5VzonXaNR'
+source_address: 'NULSd6HgWynYMbC2N2rBSyDyBLQsEThcRWdME'
+old_source_address: 'NULSd6HgUc5hkAzuA7nv6Z7ejP9CyZzi3fyo8'
+distribution_remark: 'ALEPH-POCM'
+refund_remark: 'ALEPH-POCM-NODE'
+distribution_pre_active_remark: 'ALEPH-POCM-ACTIVATION'
+balances_remark: 'ALEPH-BALANCES'
+bulk_max_items: 250
+aleph_api_server: 'https://api2.aleph.im'
+aleph_balances_oracle: 'NULSd6HgVWtEbHMskjbvwQfYT1XcRYCPiCW4D'
+
+mongodb_host: localhost
+mongodb_port: 27017
+
+distribution_pkey: ''
+airdrop_pkey: ''
+source_pkey: ''
+
+replacements:
+  "NULSd6HggMHPXyL7VnjKTGdq7yhMUnC9o8kM1": NULSd6HgZeFNjYg9Zu8igxS9KpL1NzKEPNw4B
+
+fixed_rewards:
+  "NULSd6HgzQkQ2RifH32KU7tJSkWFuB6nDmgbG": 45000
