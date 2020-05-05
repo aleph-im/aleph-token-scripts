@@ -9,7 +9,7 @@ from common import get_address, contract_call_packer
 from secp256k1 import PrivateKey
 from nuls2.api.server import get_server
 
-async def rmain(config_file):
+async def rmain(config_file, amount=1000000):
     with open(config_file, 'r') as stream:
         config = yaml.safe_load(stream)
         
@@ -23,16 +23,17 @@ async def rmain(config_file):
                                        config['contract_address'],
                                         'increaseApproval', 
                                         [[config['distribution_address'],],
-                                         [str(1000000*(10**10)),]],
+                                         [str(amount*(10**10)),]],
                                         pri_key, chain_id=config['chain_id'],
                                         asset_id=config.get('asset_id', 1))
     print(ret)
 
 @click.command()
 @click.option('--config', '-c', default='config.yaml', help='Config file')
-def main(config):
+@click.option('--amount', '-a', default=1000000, help='Amount to approve')
+def main(config, amount):
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(rmain(config))
+    loop.run_until_complete(rmain(config, amount))
 
 if __name__ == '__main__':
     main()
